@@ -261,7 +261,7 @@ namespace Form_Refresh
             var doc = new HtmlAgilityPack.HtmlDocument();
             doc.LoadHtml(html);
             var retStr = new string[2];
-            var formNode = doc.DocumentNode.SelectSingleNode("//form[@id='loginform_LXm3m']");
+            var formNode = doc.DocumentNode.SelectSingleNode("//form[@id='lsform']");
             if (formNode == null)
                 retStr[0] = null;
             else
@@ -420,21 +420,28 @@ namespace Form_Refresh
                     Dispatcher.Invoke(_updateLogDelegate, "Login page loaded");
                     //File.WriteAllText(@"c:\temp\rMainPage.htm", htm.Html);
 
-                    var formDetails = GetFormDetails(htm.Html);
-                    if(formDetails[0]==null||formDetails[1]==null)
-                    {
-                        Dispatcher.Invoke(_UpdateStatusDelegate, "Error: cant get formhash value.", i);
-                        Dispatcher.Invoke(_updateLogDelegate, "Error: cant get formhash value.");
-                        continue;
-                    }
-                    Dispatcher.Invoke(_updateLogDelegate, "formhash value found.");
+                    //var formDetails = GetFormDetails(htm.Html);
+                    //if(formDetails[0]==null||formDetails[1]==null)
+                    //{
+                    //    Dispatcher.Invoke(_UpdateStatusDelegate, "Error: cant get formhash value.", i);
+                    //    Dispatcher.Invoke(_updateLogDelegate, "Error: cant get formhash value.");
+                    //    continue;
+                    //}
+                    //Dispatcher.Invoke(_updateLogDelegate, "formhash value found.");
 
-                    var querry = "formhash="+formDetails[1]+"&referer=&username="+rd.UserName+"&password="+rd.Password+"&loginsubmit=Login";
-                    
+                    //var querry = "formhash="+formDetails[1]+"&referer=&username="+rd.UserName+"&password="+rd.Password+"&loginsubmit=Login";
+
+                    var actionUrl = "/bbs/member.php?mod=logging&action=login&loginsubmit=yes&infloat=yes&lssubmit=yes";
+
+                    var querry = $"fastloginfield=username&username={rd.UserName}&password={rd.Password}&quickforward=yes&handlekey=ls";
+
+                    var loginUrl = "http://www.yeeyi.com" + actionUrl;
+
                     System.Threading.Thread.Sleep(2000);
-                    
-                    htm = PostRequest(formDetails[0], querry);
-                    if(htm.Error)
+
+                    //htm = PostRequest(formDetails[0], querry);
+                    htm = PostRequest(loginUrl, querry);
+                    if (htm.Error)
                     {
                         Dispatcher.Invoke(_UpdateStatusDelegate, htm.Html, i);
                         Dispatcher.Invoke(_updateLogDelegate, rd.UserName + " login failed.\r\nError: " +htm.Html);
@@ -466,35 +473,57 @@ namespace Form_Refresh
                         Dispatcher.Invoke(_UpdateStatusDelegate, "Didnt found refresh option.\nPlease check the login details", i);
                         Dispatcher.Invoke(_updateLogDelegate, "Didnt found refresh option.\nPlease check the login details");
                         //anyErrorAfterLogin = true;
-                        continue;
+
                     }
-
-                    Dispatcher.Invoke(_updateLogDelegate, "Found refresh option");
-
-                    string url = HtmlAgilityPack.HtmlEntity.DeEntitize(node.GetAttributeValue("href", ""));
-                    System.Threading.Thread.Sleep(2000);
-
-                    var refreshResult = GetHtmlWithCookie(url);
-                    if(refreshResult.Error)
+                    else
                     {
-                        Dispatcher.Invoke(_UpdateStatusDelegate, refreshResult.Html, i);
-                        Dispatcher.Invoke(_updateLogDelegate, "Refreshing Error: " +refreshResult.Html);
-                        //anyErrorAfterLogin = true;
-                        continue;
-                    }
+                        Dispatcher.Invoke(_updateLogDelegate, "Found refresh option");
 
-                    Dispatcher.Invoke(_updateLogDelegate,rd.Url+" refreshed");
+                        string url = HtmlAgilityPack.HtmlEntity.DeEntitize(node.GetAttributeValue("href", ""));
+                        System.Threading.Thread.Sleep(2000);
+
+                        var refreshUrl = "http://www.yeeyi.com/bbs/" + url;
+
+                        var refreshResult = GetHtmlWithCookie(refreshUrl);
+                        if (refreshResult.Error)
+                        {
+                            Dispatcher.Invoke(_UpdateStatusDelegate, refreshResult.Html, i);
+                            Dispatcher.Invoke(_updateLogDelegate, "Refreshing Error: " + refreshResult.Html);
+                            //anyErrorAfterLogin = true;
+                            //continue;
+                        }
+                        else
+                            Dispatcher.Invoke(_updateLogDelegate, rd.Url + " refreshed");
+                    }
 
                     //File.WriteAllText(@"c:\temp\rRefresh.htm", htm.Html);
 
                     System.Threading.Thread.Sleep(2000);
 
-                    htm = GetHtmlWithCookie("http://www.yeeyi.com/bbs/member.php?mod=logging&action=logout&formhash=" + formDetails[1]);
+                    var htmDoc =new HtmlAgilityPack.HtmlDocument();
+                    htmDoc.LoadHtml(htm.Html);
 
+                    var nodes = htmDoc.DocumentNode.SelectNodes("//a");
+                    var logOutUrl = "";
+
+                    foreach(var n in nodes)
+                    {
+                        var href = n.GetAttributeValue("href", "");
+                        if (href.Contains("action=logout"))
+                        {
+                            logOutUrl = href;
+                            break;
+                        }
+                    }
+
+                    logOutUrl = "http://www.yeeyi.com/bbs/" + logOutUrl;
+
+                    //htm = GetHtmlWithCookie("http://www.yeeyi.com/bbs/member.php?mod=logging&action=logout&formhash=" +);
+                    htm = GetHtmlWithCookie(logOutUrl);
                     if (htm.Error)
                     {
                         Dispatcher.Invoke(_UpdateStatusDelegate, htm.Html, i);
-                        Dispatcher.Invoke(_updateLogDelegate, "Logout Error: " + refreshResult.Html);
+                        Dispatcher.Invoke(_updateLogDelegate, "Logout Error: " + htm.Html);
                         continue;
                     }
 
