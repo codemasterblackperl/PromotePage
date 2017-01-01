@@ -1,0 +1,24 @@
+﻿<Window x:Class="Form_Refresh.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Page Refresher v1.0" Height="350" Width="525" WindowStartupLocation="CenterScreen">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="58"/>
+            <RowDefinition/>
+            <RowDefinition Height="37"/>
+        </Grid.RowDefinitions>
+        <Button x:Name="BtnLoadUser" Content="Load User" HorizontalAlignment="Left" Height="35" Margin="10,10,0,0" VerticalAlignment="Top" Width="120" Click="Button_Click"/>
+        <Button x:Name="BtnStartRefresh" Content="Start Refresh" HorizontalAlignment="Left" Height="35" Margin="150,10,0,0" VerticalAlignment="Top" Width="120" Click="BtnStartRefresh_Click" />
+        <Button x:Name="BtnStopRefresh" Content="Stop Refresh" HorizontalAlignment="Left" Height="35" Margin="300,10,0,0" VerticalAlignment="Top" Width="120" Click="BtnStopRefresh_Click" />
+        <DataGrid x:Name="DgResult" Margin="10,0" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="User Name" Binding="{Binding Path=UserName}" Width="200"/>
+                <DataGridTextColumn Header="Status" Binding="{Binding Path=Status}" Width="250"/>
+                <DataGridTextColumn Header="Url" Binding="{Binding Path=Url}" Width="500"/>
+            </DataGrid.Columns>
+        </DataGrid>
+        <ProgressBar x:Name="Probar" Margin="10" Grid.Row="2"/>
+
+    </Grid>
+</Window>
