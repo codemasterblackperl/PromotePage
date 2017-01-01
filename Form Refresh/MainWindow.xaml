@@ -1,24 +1,42 @@
 ﻿<Window x:Class="Form_Refresh.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Page Refresher v1.0" Height="350" Width="525" WindowStartupLocation="CenterScreen">
+        Title="Page Refresher v1.0" Height="350" Width="652" WindowStartupLocation="CenterScreen">
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="58"/>
+            <RowDefinition Height="93"/>
             <RowDefinition/>
             <RowDefinition Height="37"/>
         </Grid.RowDefinitions>
-        <Button x:Name="BtnLoadUser" Content="Load User" HorizontalAlignment="Left" Height="35" Margin="10,10,0,0" VerticalAlignment="Top" Width="120" Click="Button_Click"/>
-        <Button x:Name="BtnStartRefresh" Content="Start Refresh" HorizontalAlignment="Left" Height="35" Margin="150,10,0,0" VerticalAlignment="Top" Width="120" Click="BtnStartRefresh_Click" />
-        <Button x:Name="BtnStopRefresh" Content="Stop Refresh" HorizontalAlignment="Left" Height="35" Margin="300,10,0,0" VerticalAlignment="Top" Width="120" Click="BtnStopRefresh_Click" />
-        <DataGrid x:Name="DgResult" Margin="10,0" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True">
+        <Button Click="BtnLoadUser_Click" x:Name="BtnLoadUser" Content="Load User" HorizontalAlignment="Left"
+            Height="35" Margin="10,10,0,0" VerticalAlignment="Top" Width="120"/>
+        <Button Click="BtnStartRefresh_Click" x:Name="BtnStartRefresh" Content="Start Refresh"
+            HorizontalAlignment="Left" Height="35" Margin="135,10,0,0" VerticalAlignment="Top" Width="120"/>
+        <Button Click="BtnStopRefresh_Click" x:Name="BtnStopRefresh" Content="Stop Refresh"
+            HorizontalAlignment="Left" Height="35" Margin="260,10,0,0" VerticalAlignment="Top" Width="120"/>
+        <DataGrid x:Name="DgResult" Margin="10,0" Grid.Row="1" AutoGenerateColumns="false" IsReadOnly="true">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="User Name" Binding="{Binding Path=UserName}" Width="200"/>
-                <DataGridTextColumn Header="Status" Binding="{Binding Path=Status}" Width="250"/>
-                <DataGridTextColumn Header="Url" Binding="{Binding Path=Url}" Width="500"/>
+                <DataGridTextColumn Header="User Name" Width="200" Binding="{Binding Path=UserName}"/>
+                <DataGridTextColumn Header="Status" Width="250" Binding="{Binding Path=Status}"/>
+                <DataGridTextColumn Header="Url" Width="500" Binding="{Binding Path=Url}"/>
             </DataGrid.Columns>
         </DataGrid>
         <ProgressBar x:Name="Probar" Margin="10" Grid.Row="2"/>
-
+        <Button Click="BtnStartSchedular_Click" x:Name="BtnStartSchedular" Content="Start Schedular"
+            HorizontalAlignment="Left" Height="35" Margin="510,10,0,0" VerticalAlignment="Top" Width="120"/>
+        <Button Click="BtnScheduler_Click" x:Name="BtnScheduler" Content="Scheduler Settings"
+            HorizontalAlignment="Left" Height="35" Margin="385,10,0,0" VerticalAlignment="Top" Width="120"/>
+        <Label x:Name="LblRnd" Content="Randome Interval" HorizontalAlignment="Left" Height="23"
+           Margin="10,60,0,0" VerticalAlignment="Top" Width="105"/>
+        <TextBox x:Name="TxtRnd" HorizontalAlignment="Left" Height="23" Margin="120,60,0,0" TextWrapping="Wrap"
+             Text="1" VerticalAlignment="Top" Width="26"/>
+        <Button Click="BtnSet_Click" x:Name="BtnSet" Content="Set" HorizontalAlignment="Left" Height="23"
+            Margin="159,60,0,0" VerticalAlignment="Top" Width="54"/>
+        <Button Click="BtnViewResult_Click" x:Name="BtnViewResult" Content="View Result" HorizontalAlignment="Left"
+            Height="23" Margin="462,61,0,0" VerticalAlignment="Top" Width="80"/>
+        <Button Click="BtnViewLog_Click" x:Name="BtnViewLog" Content="View Log" HorizontalAlignment="Left"
+            Height="23" Margin="547,61,0,0" VerticalAlignment="Top" Width="80"/>
+        <TextBox x:Name="TxtLog" VerticalScrollBarVisibility="Auto" Margin="10,0" Grid.Row="1" TextWrapping="Wrap"
+             IsReadOnly="true"/>
     </Grid>
 </Window>

@@ -15,6 +15,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 
 namespace Form_Refresh
 {
@@ -30,17 +31,105 @@ namespace Form_Refresh
         {
             InitializeComponent();
             DgResult.ItemsSource = _refreshDetailsList;
-            _UpdateStatusDelegate = UpdateStatus;
+            _UpdateStatusDelegate = new UpdateStatusDelegate(UpdateStatus);
+            _updateLogDelegate = new UpdateLogDelegate(UpdateLog);
             BtnStopRefresh.IsEnabled = false;
+            _refreshTimer = new DispatcherTimer();
+            _refreshTimer.Tick += _refreshTimer_Tick;
+            _refreshTimer.Interval = new TimeSpan(0, 10, 0);
+            _refreshTimer.Stop();
+            _refreshTimer.IsEnabled = false;
+            _schedulerTimer = new DispatcherTimer();
+            _schedulerTimer.Interval = new TimeSpan(0, 1, 0);
+            _schedulerTimer.Tick += _schedulerTimer_Tick;
+            _schedulerTimer.Start();
+            _isTimerEnabled = false;
+            UpdateLog("Software loaded");
+            try
+            {
+                foreach (string readAllLine in File.ReadAllLines("sch.txt"))
+                {
+                    try
+                    {
+                        string[] strArray = readAllLine.Split(new string[1]
+                        {
+              ","
+                        }, StringSplitOptions.RemoveEmptyEntries);
+                        _schedularTimerList.Add(new ScheduleTimer()
+                        {
+                            From = int.Parse(strArray[0]),
+                            To = int.Parse(strArray[1]),
+                            Interval = int.Parse(strArray[2])
+                        });
+                    }
+                    catch
+                    {
+                    }
+                }
+                UpdateLog("Settings loaded");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+                UpdateLog(ex.Message);
+                UpdateLog("Settings file not found.\nSet to default settings");
+            }
+        }
+
+        private void _schedulerTimer_Tick(object sender, EventArgs e)
+        {
+            bool flag = false;
+            _schedulerTimer.Stop();
+            _schedulerTimer.IsEnabled = false;
+            if ((_bgw == null || !_bgw.IsBusy) && _isTimerEnabled)
+            {
+                foreach (ScheduleTimer schedularTimer in _schedularTimerList)
+                {
+                    if (schedularTimer.From <= DateTime.Now.Hour && schedularTimer.To > DateTime.Now.Hour)
+                    {
+                        _refreshTimer.Interval = new TimeSpan(0, schedularTimer.Interval, 0);
+                        flag = true;
+                        break;
+                    }
+                }
+            }
+            if (flag)
+            {
+                _refreshTimer.IsEnabled = true;
+                _refreshTimer.Start();
+            }
+            else
+            {
+                _schedulerTimer.IsEnabled = true;
+                _schedulerTimer.Start();
+            }
+        }
+
+        private void _refreshTimer_Tick(object sender, EventArgs e)
+        {
+            _refreshTimer.Stop();
+            _refreshTimer.IsEnabled = false;
+            if (_bgw != null && _bgw.IsBusy)
+                return;
+            StartRefresh();
         }
 
         CookieContainer _cookieCon;
 
         List<RefreshDetails> _refreshDetailsList = new List<RefreshDetails>();
 
+        private int _rnd = 1;
+        private bool _isTimerEnabled;
+
         delegate void UpdateStatusDelegate(string status, int value);
+        delegate void UpdateLogDelegate(string message);
 
         UpdateStatusDelegate _UpdateStatusDelegate;
+
+        UpdateLogDelegate _updateLogDelegate;
+
+        private DispatcherTimer _refreshTimer;
+        private DispatcherTimer _schedulerTimer;
 
         BackgroundWorker _bgw;
 
@@ -51,6 +140,100 @@ namespace Form_Refresh
             _refreshDetailsList[value].Status = message;
             Probar.Value = value+1;
             DgResult.Items.Refresh();
+        }
+
+        private void UpdateLog(string message)
+        {
+            TextBox txtLog = TxtLog;
+            string str = txtLog.Text + (object)DateTime.Now + ": " + message + ".\n";
+            txtLog.Text = str;
+        }
+
+        private void BtnLoadUser_Click(object sender, RoutedEventArgs e)
+        {
+            LoadUsers();
+            DgResult.Items.Refresh();
+        }
+
+        private void BtnStartRefresh_Click(object sender, RoutedEventArgs e)
+        {
+            _IsWorketStopped = false;
+            if (_refreshDetailsList.Count == 0)
+            {
+                MessageBox.Show("Please add details of the webpage");
+                return;
+            }
+            if (_isTimerEnabled)
+            {
+                _refreshTimer.Stop();
+                _refreshTimer.IsEnabled = false;
+            }
+            StartRefresh();
+        }
+
+        private void BtnStopRefresh_Click(object sender, RoutedEventArgs e)
+        {
+            _IsWorketStopped = true;
+            BtnStopRefresh.IsEnabled = false;
+        }
+
+        private void BtnStartSchedular_Click(object sender, RoutedEventArgs e)
+        {
+            if (_bgw != null && _bgw.IsBusy)
+            {
+                MessageBox.Show("Please wait until correct work finished");
+            }
+            else
+                _isTimerEnabled = true;
+        }
+
+        private void BtnScheduler_Click(object sender, RoutedEventArgs e)
+        {
+            Settings settings = new Settings()
+            {
+                Owner = (this)
+            };
+            settings.ShowDialog();
+        }
+
+        private void BtnSet_Click(object sender, RoutedEventArgs e)
+        {
+            if (TxtRnd.Text.Trim() == string.Empty)
+            {
+                MessageBox.Show("Enter correct data");
+            }
+            else
+            {
+                try
+                {
+                    _rnd = int.Parse(TxtRnd.Text);
+                }
+                catch
+                {
+                    MessageBox.Show("Enter correct data");
+                }
+            }
+        }
+
+        private void BtnViewLog_Click(object sender, RoutedEventArgs e)
+        {
+            TxtLog.Visibility = Visibility.Visible;
+        }
+
+        private void BtnViewResult_Click(object sender, RoutedEventArgs e)
+        {
+            TxtLog.Visibility = Visibility.Hidden;
+        }
+
+        void EnableUI(bool res)
+        {
+            BtnLoadUser.IsEnabled = res;
+            BtnStartRefresh.IsEnabled = res;
+            BtnStopRefresh.IsEnabled = !res;
+            BtnSet.IsEnabled = res;
+            BtnStartSchedular.IsEnabled = res;
+            BtnScheduler.IsEnabled = res;
+            TxtRnd.IsEnabled = res;
         }
 
         HtmlResult GetHtml(string url)
@@ -95,13 +278,6 @@ namespace Form_Refresh
                 retStr[1] = formHashValue;
             }
             return retStr;
-        }
-
-        void EnableUI(bool res)
-        {
-            BtnLoadUser.IsEnabled = res;
-            BtnStartRefresh.IsEnabled = res;
-            BtnStopRefresh.IsEnabled = !res;
         }
 
         HtmlResult PostRequest(string url, string querry)
@@ -176,12 +352,12 @@ namespace Form_Refresh
         void StartRefresh()
         {
             EnableUI(false);
-            Probar.Minimum = 0;
+            Probar.Minimum = 0.0;
             Probar.Maximum = _refreshDetailsList.Count;
-            Probar.Value = 0;
+            Probar.Value = 0.0;
             _bgw = new BackgroundWorker();
-            _bgw.DoWork += _bgw_DoWork;
-            _bgw.RunWorkerCompleted += _bgw_RunWorkerCompleted;
+            _bgw.DoWork += new DoWorkEventHandler(_bgw_DoWork);
+            _bgw.RunWorkerCompleted += new RunWorkerCompletedEventHandler(_bgw_RunWorkerCompleted);
             _bgw.RunWorkerAsync();
         }
 
@@ -189,11 +365,41 @@ namespace Form_Refresh
         {
             EnableUI(true);
             _bgw.Dispose();
+            if (!_isTimerEnabled)
+                return;
+            bool flag = false;
+            foreach (ScheduleTimer schedularTimer in MainWindow._schedularTimerList)
+            {
+                if (schedularTimer.From <= DateTime.Now.Hour && schedularTimer.To > DateTime.Now.Hour)
+                {
+                    _refreshTimer.Interval = new TimeSpan(0, schedularTimer.Interval, 0);
+                    flag = true;
+                    break;
+                }
+            }
+            if (flag)
+            {
+                int minutes = _refreshTimer.Interval.Minutes;
+                int minValue = minutes - _rnd;
+                if (minValue < 0)
+                    minValue = 0;
+                _refreshTimer.Interval = new TimeSpan(0, new Random().Next(minValue, minutes + _rnd), 0);
+                _refreshTimer.IsEnabled = true;
+                _refreshTimer.Start();
+            }
+            else
+            {
+                _schedulerTimer.IsEnabled = true;
+                _schedulerTimer.Start();
+            }
         }
 
         void _bgw_DoWork(object sender, DoWorkEventArgs e)
         {
+            Dispatcher.Invoke(_updateLogDelegate,"Refreshing process started");
+
             int i = -1;
+            //bool anyErrorAfterLogin = false;
             foreach (var rd in _refreshDetailsList)
             {
                 if (_IsWorketStopped)
@@ -201,22 +407,27 @@ namespace Form_Refresh
                 i++;
                 try
                 {
+                    _cookieCon = null;
                     _cookieCon = new CookieContainer();
                     var htm = GetHtmlWithCookie("http://www.yeeyi.com/bbs/index.php");
                     if (htm.Error)
                     {
                         Dispatcher.Invoke(_UpdateStatusDelegate, htm.Html, i);
+                        Dispatcher.Invoke(_updateLogDelegate, "Login page reading error: "+htm.Html);
                         continue;
                     }
 
+                    Dispatcher.Invoke(_updateLogDelegate, "Login page loaded");
                     //File.WriteAllText(@"c:\temp\rMainPage.htm", htm.Html);
-                    
+
                     var formDetails = GetFormDetails(htm.Html);
                     if(formDetails[0]==null||formDetails[1]==null)
                     {
                         Dispatcher.Invoke(_UpdateStatusDelegate, "Error: cant get formhash value.", i);
+                        Dispatcher.Invoke(_updateLogDelegate, "Error: cant get formhash value.");
                         continue;
                     }
+                    Dispatcher.Invoke(_updateLogDelegate, "formhash value found.");
 
                     var querry = "formhash="+formDetails[1]+"&referer=&username="+rd.UserName+"&password="+rd.Password+"&loginsubmit=Login";
                     
@@ -226,11 +437,12 @@ namespace Form_Refresh
                     if(htm.Error)
                     {
                         Dispatcher.Invoke(_UpdateStatusDelegate, htm.Html, i);
+                        Dispatcher.Invoke(_updateLogDelegate, rd.UserName + " login failed.\r\nError: " +htm.Html);
                         continue;
                     }
 
                     //File.WriteAllText(@"c:\temp\rLoggedIn.htm", htm.Html);
-
+                    Dispatcher.Invoke(_updateLogDelegate, rd.UserName + " logged in");
                     System.Threading.Thread.Sleep(2000);
 
                     htm = GetHtmlWithCookie(rd.Url);
@@ -238,8 +450,40 @@ namespace Form_Refresh
                     if (htm.Error)
                     {
                         Dispatcher.Invoke(_UpdateStatusDelegate, htm.Html, i);
+                        Dispatcher.Invoke(_updateLogDelegate, rd.Url + " loading failed.\r\nError: " + htm.Html);
+                        //anyErrorAfterLogin = true;
                         continue;
                     }
+
+                    Dispatcher.Invoke(_updateLogDelegate, rd.Url + " loaded");
+
+                    var document = new HtmlAgilityPack.HtmlDocument();
+                    document.LoadHtml(htm.Html);
+
+                    var node=document.DocumentNode.SelectSingleNode("//a[@id='k_refresh']");
+                    if (node == null)
+                    {
+                        Dispatcher.Invoke(_UpdateStatusDelegate, "Didnt found refresh option.\nPlease check the login details", i);
+                        Dispatcher.Invoke(_updateLogDelegate, "Didnt found refresh option.\nPlease check the login details");
+                        //anyErrorAfterLogin = true;
+                        continue;
+                    }
+
+                    Dispatcher.Invoke(_updateLogDelegate, "Found refresh option");
+
+                    string url = HtmlAgilityPack.HtmlEntity.DeEntitize(node.GetAttributeValue("href", ""));
+                    System.Threading.Thread.Sleep(2000);
+
+                    var refreshResult = GetHtmlWithCookie(url);
+                    if(refreshResult.Error)
+                    {
+                        Dispatcher.Invoke(_UpdateStatusDelegate, refreshResult.Html, i);
+                        Dispatcher.Invoke(_updateLogDelegate, "Refreshing Error: " +refreshResult.Html);
+                        //anyErrorAfterLogin = true;
+                        continue;
+                    }
+
+                    Dispatcher.Invoke(_updateLogDelegate,rd.Url+" refreshed");
 
                     //File.WriteAllText(@"c:\temp\rRefresh.htm", htm.Html);
 
@@ -250,14 +494,15 @@ namespace Form_Refresh
                     if (htm.Error)
                     {
                         Dispatcher.Invoke(_UpdateStatusDelegate, htm.Html, i);
+                        Dispatcher.Invoke(_updateLogDelegate, "Logout Error: " + refreshResult.Html);
                         continue;
                     }
 
                     System.Threading.Thread.Sleep(2000);
 
                     Dispatcher.Invoke(_UpdateStatusDelegate, "Done", i);
+                    Dispatcher.Invoke(_updateLogDelegate, "Logout Success");
 
-                    _cookieCon = null;
                     //File.WriteAllText(@"c:\temp\rLogout.htm", htm.Html);
 
                 }
@@ -288,31 +533,12 @@ namespace Form_Refresh
                 _refreshDetailsList = new List<RefreshDetails>(tlist);
                 MessageBox.Show(ex.Message);
                 MessageBox.Show("File corrupted");
+                UpdateLog(ex.Message);
+                UpdateLog("Loading user details failed\nPlease use the correct user details file.");
             }
         }
 
 
-        private void Button_Click(object sender, RoutedEventArgs e)
-        {
-            LoadUsers();
-            DgResult.Items.Refresh();
-        }
-
-        private void BtnStartRefresh_Click(object sender, RoutedEventArgs e)
-        {
-            _IsWorketStopped = false;
-            if (_refreshDetailsList.Count == 0)
-            {
-                MessageBox.Show("Please add details of the webpage");
-                return;
-            }
-            StartRefresh();
-        }
-
-        private void BtnStopRefresh_Click(object sender, RoutedEventArgs e)
-        {
-            _IsWorketStopped = true;
-            BtnStopRefresh.IsEnabled = false;
-        }
+        
     }
 }
